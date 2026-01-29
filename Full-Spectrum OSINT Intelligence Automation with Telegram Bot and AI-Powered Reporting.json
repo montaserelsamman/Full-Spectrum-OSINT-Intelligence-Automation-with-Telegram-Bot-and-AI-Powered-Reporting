@@ -1,0 +1,1854 @@
+{
+  "name": "Full-Spectrum OSINT Intelligence Automation with Telegram Bot and AI-Powered Reporting",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "b72e0cb1-d57c-44a1-aa7a-0ae200f721be",
+      "name": "Telegram OSINT Bot",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        112,
+        5168
+      ],
+      "webhookId": "1e1e5008-18ea-40de-b0ef-997771c1b983",
+      "credentials": {
+        "telegramApi": {
+          "id": "IoRZmpsmJZJRRiRr",
+          "name": "Telegram account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "target",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "chatId",
+              "value": "={{ $json.message.chat.id }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0ea96130-8cb1-46a3-9f43-b93154649283",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        336,
+        5168
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Get the target from the incoming Telegram message\nconst target = $input.item.json.message?.text || $input.item.json.target || '';\n\n// Define regex patterns for different target types\nconst patterns = {\n  email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/,\n  phone: /^[+]?[(]?[0-9]{1,4}[)]?[-\\s.]?[(]?[0-9]{1,4}[)]?[-\\s.]?[0-9]{1,9}$/,\n  ip: /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,\n  domain: /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$/,\n  url: /^https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)$/,\n  image: /\\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i,\n  document: /\\.(pdf|doc|docx|xls|xlsx|txt|csv)$/i\n};\n\n// Function to detect target type\nfunction detectTargetType(input) {\n  const trimmedInput = input.trim();\n  \n  // Check each pattern\n  if (patterns.email.test(trimmedInput)) {\n    return 'email';\n  }\n  if (patterns.url.test(trimmedInput)) {\n    return 'url';\n  }\n  if (patterns.ip.test(trimmedInput)) {\n    return 'ip';\n  }\n  if (patterns.domain.test(trimmedInput)) {\n    return 'domain';\n  }\n  if (patterns.phone.test(trimmedInput)) {\n    return 'phone';\n  }\n  if (patterns.image.test(trimmedInput)) {\n    return 'image';\n  }\n  if (patterns.document.test(trimmedInput)) {\n    return 'document';\n  }\n  \n  // If no pattern matches, assume it's a username or text\n  if (trimmedInput.length > 0 && trimmedInput.length < 50 && !trimmedInput.includes(' ')) {\n    return 'username';\n  }\n  \n  return 'text';\n}\n\n// Detect the target type\nconst targetType = detectTargetType(target);\n\n// Return the item with targetType field\nreturn {\n  json: {\n    ...($input.item.json),\n    target: target,\n    targetType: targetType\n  }\n};"
+      },
+      "id": "21b0a07d-c87e-46fd-a7d0-ab208e7fa0e7",
+      "name": "Detect Target Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        5168
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.targetType }}",
+                    "rightValue": "email",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Email"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.targetType }}",
+                    "rightValue": "phone",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Phone"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.targetType }}",
+                    "rightValue": "username",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Username"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.targetType }}",
+                    "rightValue": "domain",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Domain"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.targetType }}",
+                    "rightValue": "ip",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "IP"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.targetType }}",
+                    "rightValue": "url",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "URL"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.targetType }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Image"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.targetType }}",
+                    "rightValue": "document",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Document"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1e47d5c-63f8-4577-b418-d9e968882511",
+      "name": "Route by Target Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        784,
+        5072
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://haveibeenpwned.com/api/v3/breachedaccount/' + $json.target }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n-osint-bot"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "18cfd355-9e37-43ac-8f61-bc5581afe046",
+      "name": "Email - Breach Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        3440
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://emailrep.io/{{ $json.target }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "66a80012-6b7f-4fc1-adb7-1438a7ec0712",
+      "name": "Email - Reputation Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        3632
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://www.google.com/search?q=' + $json.target }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "ab21b45e-d891-4172-b839-5f5d556bb1d4",
+      "name": "Email - Public Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        3824
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://phonevalidation.abstractapi.com/v1/?api_key=<__PLACEHOLDER_VALUE__API_KEY__>&phone={{ $json.target }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "5d44ece6-007c-4e3d-b41d-41f3b23fffd6",
+      "name": "Phone - Carrier Lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        4016
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://www.google.com/search?q=' + $json.target }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "7b6a03b2-d612-4412-a7e7-165aca45c084",
+      "name": "Phone - Public Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        4208
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/users/{{ $json.target }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n-osint-bot"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "c9481ebf-e7bf-403d-b081-b4a143514850",
+      "name": "Username - GitHub Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        4400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.google.com/search?q={{ $json.target }}+site:twitter.com+OR+site:instagram.com+OR+site:facebook.com",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "98431fb1-2462-4e10-8be4-75afb2039ae0",
+      "name": "Username - Social Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        4592
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://www.google.com/search?q=' + $json.target + '+site:pastebin.com' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "24f3914a-b65e-4a2c-883c-daf6f4f2c10a",
+      "name": "Username - Paste Sites",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        4784
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.whoisxmlapi.com/whoisserver/WhoisService?apiKey=<__PLACEHOLDER_VALUE__WHOIS_XML_API_KEY__>&domainName={{ $json.target }}&outputFormat=JSON",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "76137290-efc6-4cef-b541-347da749011a",
+      "name": "Domain - WHOIS Lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        4976
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://dns.google/resolve?name={{ $json.target }}&type=ANY",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "8f2cf65a-b240-4d1a-b628-e31ca8f299e9",
+      "name": "Domain - DNS Records",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        5168
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://www.virustotal.com/api/v3/domains/' + $json.target }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-apikey",
+              "value": "<__PLACEHOLDER_VALUE__VirusTotal API Key__>"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "3953d8f7-73f6-46b6-9701-a7bebcf96073",
+      "name": "Domain - Reputation Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        5360
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lD9PJA8Yx0yDWnPf",
+          "name": "Header Auth account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://ipapi.co/{{ $json.target }}/json/",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "d1047a69-83ad-485a-b81c-07e6e1988410",
+      "name": "IP - Geolocation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        5552
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://www.virustotal.com/api/v3/ip_addresses/' + $json.target }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-apikey",
+              "value": "<__PLACEHOLDER_VALUE__VirusTotal API Key__>"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "336231f0-dc03-4eb2-bae2-fe3d4bfce756",
+      "name": "IP - Reputation Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        5744
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://api.abuseipdb.com/api/v2/check?ipAddress=' + $json.target }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Key",
+              "value": "<__PLACEHOLDER_VALUE__AbuseIPDB API Key__>"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "faea7ab9-7bbf-4e6c-bde7-f1ca69e50ce5",
+      "name": "IP - Abuse Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        5936
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://archive.org/wayback/available?url={{ $json.target }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "82a34b47-2997-4c05-ab42-b36df225bcc0",
+      "name": "URL - Wayback Machine",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        6128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.target }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "f441245f-861b-4ff5-af40-5a5c9e6ae0fe",
+      "name": "URL - Content Fetch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        6320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://www.google.com/searchbyimage?image_url=' + $json.target }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "d02a7bc7-165b-4db0-854e-f125c31da06e",
+      "name": "Image - Reverse Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        6512
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://exiftool.org/exif.cgi?url=' + $json.target }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "9a413c37-f091-4297-aaa9-3ef001a62bed",
+      "name": "Image - Metadata Extract",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        6704
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.target }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "c00f22d0-7e3f-4a4f-ae8c-7d95472b539b",
+      "name": "Document - Metadata Extract",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1008,
+        6896
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "category",
+              "value": "Email OSINT",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "target",
+              "value": "={{ $('Workflow Configuration').item.json.target }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "findings",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "id-4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c4fbd299-1651-459b-b840-536e09608d3e",
+      "name": "Normalize Email Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        3632
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "category",
+              "value": "Phone OSINT",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "target",
+              "value": "={{ $('Workflow Configuration').item.json.target }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "findings",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "id-4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c2f2e737-7e99-4527-91f5-4f2775f249c1",
+      "name": "Normalize Phone Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        4112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "category",
+              "value": "Username OSINT",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "target",
+              "value": "={{ $('Workflow Configuration').item.json.target }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "findings",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "id-4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "946a5146-ffb6-4872-832f-77988a5db584",
+      "name": "Normalize Username Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        4592
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "category",
+              "value": "Domain OSINT",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "target",
+              "value": "={{ $('Workflow Configuration').item.json.target }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "findings",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "id-4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6d077483-fcdb-426f-abb0-61ac529cbfdd",
+      "name": "Normalize Domain Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        5168
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "category",
+              "value": "IP OSINT",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "target",
+              "value": "={{ $('Workflow Configuration').item.json.target }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "findings",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "id-4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e2e4a846-cb60-4d2e-b2c7-68206a6ace70",
+      "name": "Normalize IP Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        5744
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "category",
+              "value": "URL OSINT",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "target",
+              "value": "={{ $('Workflow Configuration').item.json.target }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "findings",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "id-4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "37711048-efbf-4b7f-a58c-6cd23bd89eef",
+      "name": "Normalize URL Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        6224
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "category",
+              "value": "Image OSINT",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "target",
+              "value": "={{ $('Workflow Configuration').item.json.target }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "findings",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "id-4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5d23c00a-6371-4627-9ed2-c4c563f68980",
+      "name": "Normalize Image Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        6608
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "category",
+              "value": "Document OSINT",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "target",
+              "value": "={{ $('Workflow Configuration').item.json.target }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "findings",
+              "value": "={{ $json }}",
+              "type": "object"
+            },
+            {
+              "id": "id-4",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0045856f-1ad9-427b-aa33-9ea4457d91fc",
+      "name": "Normalize Document Results",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        6896
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 8
+      },
+      "id": "6d907b7a-533e-4e74-ba7b-375503a6b7f1",
+      "name": "Merge All OSINT Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1456,
+        5360
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "4c24ecf7-6e9d-41ca-915f-73ddf68202ed",
+      "name": "Aggregate Findings",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        5456
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama3",
+        "options": {}
+      },
+      "id": "56db3390-d6b1-415f-8870-cae5b55a7d5e",
+      "name": "Ollama LLaMA 3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        4816
+      ],
+      "credentials": {
+        "ollamaApi": {
+          "id": "xU8UsruskNQGf8FF",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"summary\": {\n      \"type\": \"string\",\n      \"description\": \"Executive summary of the OSINT intelligence report\"\n    },\n    \"keyFindings\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"List of key findings from the OSINT analysis\"\n    },\n    \"riskLevel\": {\n      \"type\": \"string\",\n      \"enum\": [\"Low\", \"Medium\", \"High\", \"Critical\"],\n      \"description\": \"Overall risk level assessment\"\n    },\n    \"threatScore\": {\n      \"type\": \"number\",\n      \"description\": \"Threat score from 0-100\"\n    },\n    \"confidence\": {\n      \"type\": \"number\",\n      \"description\": \"Confidence level from 0-100\"\n    },\n    \"recommendations\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"List of recommended actions\"\n    },\n    \"detailedAnalysis\": {\n      \"type\": \"string\",\n      \"description\": \"Detailed analysis of the OSINT findings\"\n    },\n    \"reportId\": {\n      \"type\": \"string\",\n      \"description\": \"Unique identifier for the report\"\n    },\n    \"status\": {\n      \"type\": \"string\",\n      \"description\": \"Status of the analysis\"\n    }\n  },\n  \"required\": [\"summary\", \"keyFindings\", \"riskLevel\", \"threatScore\", \"confidence\", \"recommendations\", \"detailedAnalysis\", \"reportId\", \"status\"]\n}",
+        "autoFix": true
+      },
+      "id": "c2b7a1ca-aaa5-4494-b488-9ce8cd1a77e2",
+      "name": "Intelligence Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2048,
+        5680
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the following OSINT findings as a senior cyber threat intelligence analyst:\n\nTarget: {{ $json.data[0].target }}\nTarget Type: {{ $json.data[0].category }}\n\nOSINT Data Collected:\n{{ JSON.stringify($json.data, null, 2) }}\n\nProvide a comprehensive intelligence assessment that:\n1. Summarizes all key findings\n2. Identifies potential security risks and threats\n3. Assigns confidence levels (0-100) to each finding\n4. Clearly distinguishes between confirmed facts and analytical assumptions\n5. Provides risk ratings (Low/Medium/High/Critical) where applicable\n6. Highlights any correlations or patterns across data sources",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a senior cyber threat intelligence analyst. Analyze the OSINT data provided and generate a professional intelligence assessment.\n\nYour analysis must be:\n- Objective and factual\n- Clearly distinguish between confirmed facts and analytical assumptions\n- Assign risk levels (Low/Medium/High/Critical) where applicable\n- Assign confidence scores (0-100) to findings\n\nIMPORTANT: You must return your response in the exact structured format specified by the output parser. Follow the schema precisely to ensure proper data formatting."
+        }
+      },
+      "id": "e2b813fb-d32a-4141-887a-e1ec399a47a8",
+      "name": "AI Intelligence Analyst",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1904,
+        5456
+      ]
+    },
+    {
+      "parameters": {
+        "html": "=<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"UTF-8\" />\n  <title>OSINT Intelligence Report</title>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>🔍 OSINT Intelligence Report</h1>\n      <p class=\"subtitle\">Comprehensive Target Analysis</p>\n      <div class=\"metadata\">\n        <span><strong>Report ID:</strong> {{ $json.reportId || 'N/A' }}</span>\n        <span><strong>Generated:</strong> {{ $now.format('YYYY-MM-DD HH:mm:ss') }}</span>\n      </div>\n    </div>\n\n    <div class=\"section\">\n      <h2>📋 Target Overview</h2>\n      <div class=\"info-box\">\n        <p><strong>Target Type:</strong> {{ $json.targetType || 'Unknown' }}</p>\n        <p><strong>Target Value:</strong> {{ $json.target || 'N/A' }}</p>\n        <p><strong>Analysis Status:</strong> <span class=\"badge\">{{ $json.status || 'Completed' }}</span></p>\n      </div>\n    </div>\n\n    <div class=\"section\">\n      <h2>🔎 Key Findings</h2>\n      <div class=\"findings\">\n        {{ $json.findings || 'No findings available' }}\n      </div>\n    </div>\n\n    <div class=\"section\">\n      <h2>⚠️ Risk Assessment</h2>\n      <div class=\"risk-box\">\n        <p><strong>Risk Level:</strong> <span class=\"risk-{{ $json.riskLevel || 'unknown' }}\">{{ $json.riskLevel || 'Unknown' }}</span></p>\n        <p><strong>Threat Score:</strong> {{ $json.threatScore || 'N/A' }}/100</p>\n        <p><strong>Confidence:</strong> {{ $json.confidence || 'N/A' }}%</p>\n      </div>\n    </div>\n\n    <div class=\"section\">\n      <h2>💡 Recommendations</h2>\n      <div class=\"recommendations\">\n        {{ $json.recommendations || 'No specific recommendations at this time' }}\n      </div>\n    </div>\n\n    <div class=\"section\">\n      <h2>📊 Detailed Analysis</h2>\n      <div class=\"analysis\">\n        {{ $json.detailedAnalysis || 'Analysis data not available' }}\n      </div>\n    </div>\n\n    <div class=\"footer\">\n      <p>This report is generated automatically by the OSINT Intelligence System</p>\n      <p class=\"disclaimer\">⚠️ CONFIDENTIAL - For authorized personnel only</p>\n    </div>\n  </div>\n</body>\n</html>\n\n<style>\n* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\nbody {\n  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\n  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n  padding: 20px;\n  color: #333;\n}\n\n.container {\n  max-width: 900px;\n  margin: 0 auto;\n  background-color: #ffffff;\n  border-radius: 12px;\n  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);\n  overflow: hidden;\n}\n\n.header {\n  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);\n  color: white;\n  padding: 40px 30px;\n  text-align: center;\n}\n\n.header h1 {\n  font-size: 32px;\n  font-weight: bold;\n  margin-bottom: 10px;\n  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);\n}\n\n.subtitle {\n  font-size: 16px;\n  opacity: 0.9;\n  margin-bottom: 20px;\n}\n\n.metadata {\n  display: flex;\n  justify-content: center;\n  gap: 30px;\n  font-size: 14px;\n  margin-top: 15px;\n}\n\n.section {\n  padding: 30px;\n  border-bottom: 1px solid #e0e0e0;\n}\n\n.section:last-of-type {\n  border-bottom: none;\n}\n\n.section h2 {\n  color: #1e3c72;\n  font-size: 24px;\n  margin-bottom: 20px;\n  padding-bottom: 10px;\n  border-bottom: 3px solid #667eea;\n}\n\n.info-box, .risk-box, .findings, .recommendations, .analysis {\n  background-color: #f8f9fa;\n  padding: 20px;\n  border-radius: 8px;\n  border-left: 4px solid #667eea;\n}\n\n.info-box p, .risk-box p {\n  margin-bottom: 12px;\n  font-size: 15px;\n  line-height: 1.6;\n}\n\n.info-box p:last-child, .risk-box p:last-child {\n  margin-bottom: 0;\n}\n\n.badge {\n  background-color: #28a745;\n  color: white;\n  padding: 4px 12px;\n  border-radius: 12px;\n  font-size: 13px;\n  font-weight: bold;\n}\n\n.risk-low {\n  color: #28a745;\n  font-weight: bold;\n}\n\n.risk-medium {\n  color: #ffc107;\n  font-weight: bold;\n}\n\n.risk-high {\n  color: #dc3545;\n  font-weight: bold;\n}\n\n.risk-critical {\n  color: #8b0000;\n  font-weight: bold;\n  text-transform: uppercase;\n}\n\n.risk-unknown {\n  color: #6c757d;\n  font-weight: bold;\n}\n\n.findings, .recommendations, .analysis {\n  font-size: 15px;\n  line-height: 1.8;\n  color: #555;\n}\n\n.footer {\n  background-color: #2c3e50;\n  color: white;\n  padding: 25px 30px;\n  text-align: center;\n  font-size: 13px;\n}\n\n.footer p {\n  margin-bottom: 8px;\n}\n\n.footer p:last-child {\n  margin-bottom: 0;\n}\n\n.disclaimer {\n  color: #ffc107;\n  font-weight: bold;\n  margin-top: 10px;\n}\n\n@media print {\n  body {\n    background: white;\n    padding: 0;\n  }\n  \n  .container {\n    box-shadow: none;\n  }\n}\n</style>"
+      },
+      "id": "a6ff5555-d80c-4744-857d-136c0af9c05e",
+      "name": "Generate Intelligence Report HTML",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        2256,
+        5360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "html",
+        "options": {
+          "fileName": "=OSINT_Intelligence_Report_{{ $now.format('yyyy-MM-dd_HHmmss') }}.pdf"
+        }
+      },
+      "id": "c9aec9d9-92e4-48b3-b4b7-8b319ad6ccc4",
+      "name": "Convert to PDF",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2480,
+        5360
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Workflow Configuration').item.json.chatId }}",
+        "text": "={{ $json.summary }}",
+        "additionalFields": {
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "45838ac5-5de1-4ae2-945c-7d0b03fbaccc",
+      "name": "Send Summary to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2256,
+        5552
+      ],
+      "webhookId": "77cf77b7-4aeb-4b57-9300-b830c3e73f32",
+      "credentials": {
+        "telegramApi": {
+          "id": "aFOMOIrSZGEtDKD3",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "={{ $('Workflow Configuration').item.json.chatId }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "Complete OSINT Intelligence Report"
+        }
+      },
+      "id": "289ae7f8-53b4-4c54-83de-4a47a2ff5a69",
+      "name": "Send PDF Report to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2704,
+        5360
+      ],
+      "webhookId": "422e71df-c58a-4c44-b389-2a5d16ca90e6",
+      "credentials": {
+        "telegramApi": {
+          "id": "IoRZmpsmJZJRRiRr",
+          "name": "Telegram account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        5664
+      ],
+      "id": "016e79c5-9096-4599-8fc9-c5ab01f9fba2",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "qi0SOIRYOzq5YT64",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2464,
+        5792
+      ],
+      "id": "a5e9a4be-6a66-417c-95f5-d5954e0728ca",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "qi0SOIRYOzq5YT64",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram OSINT Bot": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Detect Target Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Target Type": {
+      "main": [
+        [
+          {
+            "node": "Route by Target Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Target Type": {
+      "main": [
+        [
+          {
+            "node": "Email - Breach Check",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email - Reputation Check",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email - Public Search",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Phone - Carrier Lookup",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Phone - Public Search",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Username - GitHub Search",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Username - Social Search",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Username - Paste Sites",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Domain - WHOIS Lookup",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Domain - DNS Records",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Domain - Reputation Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IP - Geolocation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IP - Reputation Check",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IP - Abuse Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "URL - Wayback Machine",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "URL - Content Fetch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Image - Reverse Search",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Image - Metadata Extract",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Document - Metadata Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email - Breach Check": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email - Reputation Check": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email - Public Search": {
+      "main": [
+        [
+          {
+            "node": "Normalize Email Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phone - Carrier Lookup": {
+      "main": [
+        [
+          {
+            "node": "Normalize Phone Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phone - Public Search": {
+      "main": [
+        [
+          {
+            "node": "Normalize Phone Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Username - GitHub Search": {
+      "main": [
+        [
+          {
+            "node": "Normalize Username Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Username - Social Search": {
+      "main": [
+        [
+          {
+            "node": "Normalize Username Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Username - Paste Sites": {
+      "main": [
+        [
+          {
+            "node": "Normalize Username Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Domain - WHOIS Lookup": {
+      "main": [
+        [
+          {
+            "node": "Normalize Domain Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Domain - DNS Records": {
+      "main": [
+        [
+          {
+            "node": "Normalize Domain Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Domain - Reputation Check": {
+      "main": [
+        [
+          {
+            "node": "Normalize Domain Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IP - Geolocation": {
+      "main": [
+        [
+          {
+            "node": "Normalize IP Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IP - Reputation Check": {
+      "main": [
+        [
+          {
+            "node": "Normalize IP Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IP - Abuse Check": {
+      "main": [
+        [
+          {
+            "node": "Normalize IP Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "URL - Wayback Machine": {
+      "main": [
+        [
+          {
+            "node": "Normalize URL Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "URL - Content Fetch": {
+      "main": [
+        [
+          {
+            "node": "Normalize URL Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image - Reverse Search": {
+      "main": [
+        [
+          {
+            "node": "Normalize Image Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image - Metadata Extract": {
+      "main": [
+        [
+          {
+            "node": "Normalize Image Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Document - Metadata Extract": {
+      "main": [
+        [
+          {
+            "node": "Normalize Document Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Email Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All OSINT Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Phone Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All OSINT Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Normalize Username Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All OSINT Results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Normalize Domain Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All OSINT Results",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Normalize IP Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All OSINT Results",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Normalize URL Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All OSINT Results",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Normalize Image Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All OSINT Results",
+            "type": "main",
+            "index": 6
+          }
+        ]
+      ]
+    },
+    "Normalize Document Results": {
+      "main": [
+        [
+          {
+            "node": "Merge All OSINT Results",
+            "type": "main",
+            "index": 7
+          }
+        ]
+      ]
+    },
+    "Merge All OSINT Results": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Findings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intelligence Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Intelligence Analyst",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Findings": {
+      "main": [
+        [
+          {
+            "node": "AI Intelligence Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Intelligence Analyst": {
+      "main": [
+        [
+          {
+            "node": "Generate Intelligence Report HTML",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Summary to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Intelligence Report HTML": {
+      "main": [
+        [
+          {
+            "node": "Convert to PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to PDF": {
+      "main": [
+        [
+          {
+            "node": "Send PDF Report to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Intelligence Analyst",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Intelligence Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "dac219cb-12dc-4969-9f90-6a149be2b3c3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a0137baa9d916baffb2eab75af77f330dbb53ae5986ebe8b8bf407064fea30c2"
+  },
+  "id": "0K-lXioX2ceVQ-75T5iFr",
+  "tags": []
+}
